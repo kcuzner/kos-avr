@@ -13,7 +13,7 @@ OBJDIR=obj
 LIBS=
 
 MCU=atmega48a
-INCLUDES=-Iinclude
+INCLUDES=-Iinclude -I/usr/include/simavr/avr/
 F_CPU=9600000
 
 # Programmer parameters
@@ -36,10 +36,11 @@ OBJ:=$(addprefix $(OBJDIR)/,$(notdir $(SRC:.c=.o)))
 OBJ+=$(addprefix $(OBJDIR)/,$(notdir $(ASM:.S=.o)))
 
 GCFLAGS=$(INCLUDES) -DF_CPU=$(F_CPU) -g -mmcu=$(MCU) -Os -fpack-struct -fshort-enums\
-		-funsigned-bitfields -funsigned-char -Wall -Wstrict-prototypes -Wa,-ahlms=$(addprefix $(OBJDIR)/,$(notdir $(<:.c=.lst)))
+		-funsigned-bitfields -funsigned-char -Wall -Wstrict-prototypes -Wa,-ahlms=$(addprefix $(OBJDIR)/,$(notdir $(<:.c=.lst)))\
+		-g
 ASFLAGS=$(INCLUDES) -DF_CPU=$(F_CPU) -mmcu=$(MCU) \
 		-gstabs
-LDFLAGS=-mmcu=$(MCU) -lm $(LIBS)
+LDFLAGS=-mmcu=$(MCU) -lm $(LIBS) -g
 
 all: $(BINDIR)/$(PROJECT).hex
 

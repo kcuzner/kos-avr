@@ -8,15 +8,15 @@
 
 typedef enum { TASK_READY, TASK_WAITING_ISR } KOS_TaskStatus;
 
-typedef struct Task {
+typedef struct KOS_Task {
     void *sp;
     KOS_TaskStatus status;
-    struct Task *next;
-} Task;
+    struct KOS_Task *next;
+} KOS_Task;
 
 typedef void (*KOS_TaskFn)(void);
 
-extern Task *kos_current_task;
+extern KOS_Task *kos_current_task;
 
 /**
  * Initializes the KOS kernel
@@ -38,6 +38,9 @@ void kos_run(void);
  */
 void kos_schedule(void);
 
-void kos_dispatch(Task *next);
+/**
+ * Dispatches the passed task, saving the context of the current task
+ */
+void kos_dispatch(KOS_Task *next);
 
 #endif //_KOS_H_
