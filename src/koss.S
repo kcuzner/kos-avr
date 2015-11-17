@@ -58,8 +58,8 @@ kos_dispatch_tsth:
     in   r0, _SFR_IO_ADDR(SPH)
     st   X+, r0
 kos_dispatch_next:
-    mov  r26, r23 //argument to this function, the next Task *, dereferenced
-    mov  r27, r24
+    mov  r26, r24 //argument to this function, the next Task *, dereferenced
+    mov  r27, r23
     sts  kos_current_task, r26 //set current task
     sts  kos_current_task+1, r27
     ld   r0, X+ //load stack pointer
