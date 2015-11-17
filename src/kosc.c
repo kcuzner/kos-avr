@@ -16,12 +16,12 @@
  * SREG
  */
 
-static KOS_Task tasks[MAX_TASKS];
+static KOS_Task tasks[KOS_MAX_TASKS + 1];
 static uint8_t next_task = 0;
 static KOS_Task *task_head;
 KOS_Task *kos_current_task;
 
-static uint8_t kos_idle_task_stack[48];
+static uint8_t kos_idle_task_stack[KOS_IDLE_TASK_STACK];
 static void kos_idle_task(void)
 {
     while (1) { }
@@ -29,7 +29,7 @@ static void kos_idle_task(void)
 
 void kos_init(void)
 {
-    kos_new_task(&kos_idle_task, &kos_idle_task_stack);
+    kos_new_task(&kos_idle_task, &kos_idle_task_stack[KOS_IDLE_TASK_STACK - 1]);
 }
 
 void kos_new_task(KOS_TaskFn task, void *sp)

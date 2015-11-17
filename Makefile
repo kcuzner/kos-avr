@@ -24,6 +24,7 @@ PROGRAMMER=usbasp
 AS=avr-gcc
 CC=avr-gcc
 OBJCOPY=avr-objcopy
+OBJDUMP=avr-objdump
 SIZE=avr-size
 AVRDUDE=avrdude
 MKDIR=mkdir
@@ -51,6 +52,12 @@ clean:
 	$(RM) -rf $(BINDIR)
 	$(RM) -rf $(OBJDIR)
 
+sim: $(BINDIR)/$(PROJECT).elf
+	simavr -g $(BINDIR)/$(PROJECT).elf
+
+ddd: $(BINDIR)/$(PROJECT).elf
+	ddd --debugger "avr-gdb -x gdb.conf"
+
 $(BINDIR)/$(PROJECT).hex: $(BINDIR)/$(PROJECT).elf
 	$(OBJCOPY) -j .text -j .data -O $(HEXFORMAT) $< $@
 
@@ -65,6 +72,7 @@ $(BINDIR)/$(PROJECT).elf: $(OBJ)
 	@$(MKDIR) -p $(dir $@)
 	$(CC) $(OBJ) $(LDFLAGS) -o $@
 	$(SIZE) -C --mcu=$(MCU) $(BINDIR)/$(PROJECT).elf
+	$(OBJDUMP) -D $(BINDIR)/$(PROJECT).elf > $(BINDIR)/$(PROJECT).lst
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@$(MKDIR) -p $(dir $@)
