@@ -66,6 +66,7 @@ kos_dispatch_next:
     out  _SFR_IO_ADDR(SPL), r0
     ld   r0, X+
     out  _SFR_IO_ADDR(SPH), r0
+kos_stack_set:
     pop  r0
     out  _SFR_IO_ADDR(SREG), r0
     pop  r0
@@ -100,5 +101,6 @@ kos_dispatch_next:
     pop  r29
     pop  r30
     pop  r31
+kos_dispatch_done:
     reti
 
