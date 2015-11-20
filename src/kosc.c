@@ -34,23 +34,22 @@ void kos_init(void)
 
 void kos_new_task(KOS_TaskFn task, void *sp)
 {
-    uint8_t i;
-    uint8_t *stack;
+    int8_t i;
+    uint8_t *stack = sp;
     KOS_Task *tcb;
 
     //make space for pc, sreg, and 32 register
-    stack = (uint8_t*)sp - 35;
     stack[0] = (uint16_t)task & 0xFF;
-    stack[1] = (uint16_t)task >> 8;
-    for (i = 2; i < 33; i++)
+    stack[-1] = (uint16_t)task >> 8;
+    for (i = -2; i > -34; i--)
     {
         stack[i] = 0;
     }
-    stack[34] = 0x80; //sreg, interrupts enabled
+    stack[-34] = 0x80; //sreg, interrupts enabled
     
     //create the task structure
     tcb = &tasks[next_task++];
-    tcb->sp = sp;
+    tcb->sp = stack - 35;
     tcb->status = TASK_READY;
 
     //insert into the task list as the new highest priority task

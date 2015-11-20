@@ -72,7 +72,7 @@ $(BINDIR)/$(PROJECT).elf: $(OBJ)
 	@$(MKDIR) -p $(dir $@)
 	$(CC) $(OBJ) $(LDFLAGS) -o $@
 	$(SIZE) -C --mcu=$(MCU) $(BINDIR)/$(PROJECT).elf
-	$(OBJDUMP) -D $(BINDIR)/$(PROJECT).elf > $(BINDIR)/$(PROJECT).lst
+	$(OBJDUMP) -d $(BINDIR)/$(PROJECT).elf > $(BINDIR)/$(PROJECT).lst
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@$(MKDIR) -p $(dir $@)
