@@ -64,6 +64,69 @@ void kos_new_task(KOS_TaskFn task, void *sp)
     }
 }
 
+void kos_mutex_enter(void)
+{
+    cli();
+}
+
+void kos_mutex_exit(void)
+{
+    sei();
+}
+
+#ifdef KOS_SEMAPHORE
+
+static KOS_Semaphore semaphores[KOS_MAX_SEMAPHORES + 1];
+static uint8_t next_semaphore = 0;
+
+KOS_Semaphore *kos_semaphore_init(int8_t value)
+{
+    KOS_Semaphore *s = &semaphores[next_semaphore++];
+    s->value = value;
+    return s;
+}
+
+void kos_semaphore_post(KOS_Semaphore *semaphore)
+{
+    kos_mutex_enter();
+
+    KOS_Task *task;
+    semaphore->value++;
+
+    //allow one task to be resumed which is waiting on this semaphore
+    task = task_head;
+    while (task)
+    {
+        if (task->status == TASK_SEMAPHORE && task->status_pointer == semaphore)
+            break; //this is the task to be restored
+    }
+
+    task->status = TASK_READY;
+    kos_schedule();
+
+    kos_mutex_exit();
+}
+
+void kos_semaphore_pend(KOS_Semaphore *semaphore)
+{
+    kos_mutex_enter();
+
+    int8_t val = semaphore->value--; //val is value before decrement
+
+    if (val <= 0)
+    {
+        //we need to wait on the semaphore
+        kos_current_task->status_pointer = semaphore;
+        kos_current_task->status = TASK_SEMAPHORE;
+
+        kos_schedule();
+    }
+
+    kos_mutex_exit();
+}
+
+#endif //KOS_SEMAPHORE
+
 void kos_run(void)
 {
     kos_schedule();
