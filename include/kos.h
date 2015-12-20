@@ -8,7 +8,7 @@
 
 #include "kos_settings.h"
 
-typedef enum { TASK_READY, TASK_SEMAPHORE } KOS_TaskStatus;
+typedef enum { TASK_READY, TASK_SEMAPHORE, TASK_QUEUE } KOS_TaskStatus;
 
 typedef struct KOS_Task {
     void *sp;
@@ -63,6 +63,32 @@ void kos_semaphore_post(KOS_Semaphore *sem);
 void kos_semaphore_pend(KOS_Semaphore *sem);
 
 #endif //KOS_SEMAPHORE
+
+#ifdef KOS_QUEUE
+
+typedef struct {
+    void **messages;
+    uint8_t pendIndex;
+    uint8_t postIndex;
+    uint8_t size;
+} KOS_Queue;
+
+/**
+ * Initializes a new queue
+ */
+KOS_Queue *kos_queue_init(void **messages, uint8_t size);
+
+/**
+ * Posts to a queue
+ */
+void kos_queue_post(KOS_Queue *queue, void *message);
+
+/**
+ * Pends from a queue
+ */
+void *kos_queue_pend(KOS_Queue *queue);
+
+#endif //KOS_QUEUE
 
 /**
  * Runs the kernel

@@ -127,6 +127,68 @@ void kos_semaphore_pend(KOS_Semaphore *semaphore)
 
 #endif //KOS_SEMAPHORE
 
+#ifdef KOS_QUEUE
+
+#define NEXT_INDEX(I,S) ((I) < ((S) - 1) ? (I) + 1 : 0)
+
+static KOS_Queue queues[KOS_MAX_QUEUES + 1];
+static uint8_t next_queue = 0;
+
+KOS_Queue *kos_queue_init(void **messages, uint8_t size)
+{
+    KOS_Queue *queue = &queues[next_queue++];
+
+    queue->messages = messages;
+    queue->pendIndex = queue->postIndex = 0;
+    queue->size = size;
+
+    return queue;
+}
+
+void kos_queue_post(KOS_Queue *queue, void *message)
+{
+    KOS_Task *task;
+
+    kos_mutex_enter();
+
+    queue->messages[queue->postIndex] = message;
+    queue->postIndex = NEXT_INDEX(queue->postIndex, queue->size);
+
+    task = task_head;
+    while (task)
+    {
+        if (task->status == TASK_QUEUE && task->status_pointer == queue)
+            break; //this is the task to be restored
+    }
+    task->status = TASK_READY;
+    kos_schedule();
+
+    kos_mutex_exit();
+}
+
+void *kos_queue_pend(KOS_Queue *queue)
+{
+    void *data;
+
+    kos_mutex_enter();
+
+    if (queue->pendIndex == queue->postIndex)
+    {
+        //queue is empty, wait for next item
+        kos_current_task->status_pointer = queue;
+        kos_current_task->status = TASK_QUEUE;
+        kos_schedule();
+    }
+    data = queue->messages[queue->pendIndex];
+    queue->pendIndex = NEXT_INDEX(queue->pendIndex, queue->size);
+
+    kos_mutex_exit();
+    
+    return data;
+}
+
+#endif //KOS_QUEUE
+
 void kos_run(void)
 {
     kos_schedule();
