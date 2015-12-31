@@ -3,6 +3,7 @@
  */
 
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 
 #include "kos.h"
 #include "kos_settings.h"
@@ -99,6 +100,7 @@ void kos_semaphore_post(KOS_Semaphore *semaphore)
     {
         if (task->status == TASK_SEMAPHORE && task->status_pointer == semaphore)
             break; //this is the task to be restored
+        task = task->next;
     }
 
     task->status = TASK_READY;
@@ -202,8 +204,10 @@ void kos_schedule(void)
 
     if (task != kos_current_task)
     {
-        sei();
-        kos_dispatch(task);
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            kos_dispatch(task);
+        }
     }
 }
 
@@ -266,8 +270,11 @@ void kos_dispatch(KOS_Task *task)
             "out  %[_SPL_], r0 \n\t"
             "ld   r0, X+ \n\t"
             "out  %[_SPH_], r0 \n\t"
-            "pop  r0 \n\t"
-            "out  %[_SREG_], r0 \n\t"
+            "pop  r31 \n\t" //status into r31: andi requires register above 15
+            "bst  r31, %[_I_] \n\t" //we don't want to enable interrupts just yet, so store the interrupt status in T
+            "bld  r31, %[_T_] \n\t" //T flag is on the call clobber list and tasks are only blocked as a result of a function call
+            "andi r31, %[_nI_MASK_] \n\t" //I is now stored in T, so clear I
+            "out  %[_SREG_], r31 \n\t"
             "pop  r0 \n\t"
             "pop  r1 \n\t"
             "pop  r2 \n\t"
@@ -300,9 +307,15 @@ void kos_dispatch(KOS_Task *task)
             "pop  r29 \n\t"
             "pop  r30 \n\t"
             "pop  r31 \n\t"
+            "brtc 2f \n\t" //if the T flag is clear, do the non-interrupt enable return
+            "reti \n\t"
+            "2: \n\t"
             "ret \n\t"
             "" ::
             [_SREG_] "i" _SFR_IO_ADDR(SREG),
+            [_I_] "i" SREG_I,
+            [_T_] "i" SREG_T,
+            [_nI_MASK_] "i" (~(1 << SREG_I)),
             [_SPL_] "i" _SFR_IO_ADDR(SPL),
             [_SPH_] "i" _SFR_IO_ADDR(SPH),
             [_next_task_] "r" (task));
