@@ -28,16 +28,19 @@ void kos_init(void);
 
 /**
  * Creates a new task
+ * Note: Not safe
  */
 void kos_new_task(KOS_TaskFn task, void *sp);
 
 /**
  * Puts KOS in ISR mode
+ * Note: Not safe, assumes non-nested isrs
  */
 void kos_isr_enter(void);
 
 /**
  * Leaves ISR mode, possibly executing the dispatcher
+ * Note: Not safe, assumes non-nested isrs
  */
 void kos_isr_exit(void);
 

@@ -68,20 +68,13 @@ void kos_new_task(KOS_TaskFn task, void *sp)
 static uint8_t kos_isr_level = 0;
 void kos_isr_enter(void)
 {
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        kos_isr_level++;
-    }
+    kos_isr_level++;
 }
 
 void kos_isr_exit(void)
 {
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        kos_isr_level--;
-        if (!kos_isr_level)
-            kos_schedule();
-    }
+    kos_isr_level--;
+    kos_schedule();
 }
 
 #ifdef KOS_SEMAPHORE
@@ -113,8 +106,7 @@ void kos_semaphore_post(KOS_Semaphore *semaphore)
         }
 
         task->status = TASK_READY;
-        if (!kos_isr_level)
-            kos_schedule();
+        kos_schedule();
     }
 }
 
@@ -130,8 +122,7 @@ void kos_semaphore_pend(KOS_Semaphore *semaphore)
             kos_current_task->status_pointer = semaphore;
             kos_current_task->status = TASK_SEMAPHORE;
 
-            if (!kos_isr_level)
-                kos_schedule();
+            kos_schedule();
         }
     }
 }
@@ -172,8 +163,7 @@ void kos_queue_post(KOS_Queue *queue, void *message)
                 break; //this is the task to be restored
         }
         task->status = TASK_READY;
-        if (!kos_isr_level)
-            kos_schedule();
+        kos_schedule();
     }
 }
 
@@ -187,8 +177,7 @@ void *kos_queue_pend(KOS_Queue *queue)
             //queue is empty, wait for next item
             kos_current_task->status_pointer = queue;
             kos_current_task->status = TASK_QUEUE;
-            if (!kos_isr_level)
-                kos_schedule();
+            kos_schedule();
         }
         data = queue->messages[queue->pendIndex];
         queue->pendIndex = NEXT_INDEX(queue->pendIndex, queue->size);
@@ -206,6 +195,9 @@ void kos_run(void)
 
 void kos_schedule(void)
 {
+    if (kos_isr_level)
+        return;
+
     KOS_Task *task = task_head;
     while (task->status != TASK_READY)
         task = task->next;
