@@ -32,14 +32,14 @@ void kos_init(void);
 void kos_new_task(KOS_TaskFn task, void *sp);
 
 /**
- * Enters the mutex
+ * Puts KOS in ISR mode
  */
-void kos_mutex_enter(void);
+void kos_isr_enter(void);
 
 /**
- * Exits the mutex
+ * Leaves ISR mode, possibly executing the dispatcher
  */
-void kos_mutex_exit(void);
+void kos_isr_exit(void);
 
 #ifdef KOS_SEMAPHORE
 

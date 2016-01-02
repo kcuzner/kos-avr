@@ -65,14 +65,23 @@ void kos_new_task(KOS_TaskFn task, void *sp)
     }
 }
 
-void kos_mutex_enter(void)
+static uint8_t kos_isr_level = 0;
+void kos_isr_enter(void)
 {
-    cli();
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        kos_isr_level++;
+    }
 }
 
-void kos_mutex_exit(void)
+void kos_isr_exit(void)
 {
-    sei();
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        kos_isr_level--;
+        if (!kos_isr_level)
+            kos_schedule();
+    }
 }
 
 #ifdef KOS_SEMAPHORE
@@ -89,42 +98,42 @@ KOS_Semaphore *kos_semaphore_init(int8_t value)
 
 void kos_semaphore_post(KOS_Semaphore *semaphore)
 {
-    kos_mutex_enter();
-
-    KOS_Task *task;
-    semaphore->value++;
-
-    //allow one task to be resumed which is waiting on this semaphore
-    task = task_head;
-    while (task)
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        if (task->status == TASK_SEMAPHORE && task->status_pointer == semaphore)
-            break; //this is the task to be restored
-        task = task->next;
+        KOS_Task *task;
+        semaphore->value++;
+
+        //allow one task to be resumed which is waiting on this semaphore
+        task = task_head;
+        while (task)
+        {
+            if (task->status == TASK_SEMAPHORE && task->status_pointer == semaphore)
+                break; //this is the task to be restored
+            task = task->next;
+        }
+
+        task->status = TASK_READY;
+        if (!kos_isr_level)
+            kos_schedule();
     }
-
-    task->status = TASK_READY;
-    kos_schedule();
-
-    kos_mutex_exit();
 }
 
 void kos_semaphore_pend(KOS_Semaphore *semaphore)
 {
-    kos_mutex_enter();
-
-    int8_t val = semaphore->value--; //val is value before decrement
-
-    if (val <= 0)
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        //we need to wait on the semaphore
-        kos_current_task->status_pointer = semaphore;
-        kos_current_task->status = TASK_SEMAPHORE;
+        int8_t val = semaphore->value--; //val is value before decrement
 
-        kos_schedule();
+        if (val <= 0)
+        {
+            //we need to wait on the semaphore
+            kos_current_task->status_pointer = semaphore;
+            kos_current_task->status = TASK_SEMAPHORE;
+
+            if (!kos_isr_level)
+                kos_schedule();
+        }
     }
-
-    kos_mutex_exit();
 }
 
 #endif //KOS_SEMAPHORE
@@ -151,40 +160,39 @@ void kos_queue_post(KOS_Queue *queue, void *message)
 {
     KOS_Task *task;
 
-    kos_mutex_enter();
-
-    queue->messages[queue->postIndex] = message;
-    queue->postIndex = NEXT_INDEX(queue->postIndex, queue->size);
-
-    task = task_head;
-    while (task)
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        if (task->status == TASK_QUEUE && task->status_pointer == queue)
-            break; //this is the task to be restored
-    }
-    task->status = TASK_READY;
-    kos_schedule();
+        queue->messages[queue->postIndex] = message;
+        queue->postIndex = NEXT_INDEX(queue->postIndex, queue->size);
 
-    kos_mutex_exit();
+        task = task_head;
+        while (task)
+        {
+            if (task->status == TASK_QUEUE && task->status_pointer == queue)
+                break; //this is the task to be restored
+        }
+        task->status = TASK_READY;
+        if (!kos_isr_level)
+            kos_schedule();
+    }
 }
 
 void *kos_queue_pend(KOS_Queue *queue)
 {
     void *data;
-
-    kos_mutex_enter();
-
-    if (queue->pendIndex == queue->postIndex)
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        //queue is empty, wait for next item
-        kos_current_task->status_pointer = queue;
-        kos_current_task->status = TASK_QUEUE;
-        kos_schedule();
+        if (queue->pendIndex == queue->postIndex)
+        {
+            //queue is empty, wait for next item
+            kos_current_task->status_pointer = queue;
+            kos_current_task->status = TASK_QUEUE;
+            if (!kos_isr_level)
+                kos_schedule();
+        }
+        data = queue->messages[queue->pendIndex];
+        queue->pendIndex = NEXT_INDEX(queue->pendIndex, queue->size);
     }
-    data = queue->messages[queue->pendIndex];
-    queue->pendIndex = NEXT_INDEX(queue->pendIndex, queue->size);
-
-    kos_mutex_exit();
     
     return data;
 }

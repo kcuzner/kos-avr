@@ -43,6 +43,8 @@ int main(void)
 
 ISR(TIMER0_OVF_vect)
 {
+    kos_isr_enter();
     kos_semaphore_post(sem);
+    kos_isr_exit();
 }
 
